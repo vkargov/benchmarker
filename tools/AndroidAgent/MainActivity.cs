@@ -177,6 +177,7 @@ namespace AndroidAgent
 				hash = "<unknown>";
 				Logging.GetLogging ().Debug ("couldn't read git information: \"" + GetMonoVersion () + "\"");
 			}
+			/*
 			Octokit.Commit gitHubCommit = null;
 			try {
 				var gitHubClient = GitHubInterface.GitHubClient;
@@ -193,6 +194,7 @@ namespace AndroidAgent
 				// commit.CommitDate = gitHubCommit.Committer.Date.DateTime;
 				Logging.GetLogging ().Info ("Got commit " + hash + " from GitHub");
 			}
+			*/
 
 			Logging.GetLogging ().InfoFormat ("Benchmarker | commit \"{0}\" on branch \"{1}\"", hash, branch);
 		}
