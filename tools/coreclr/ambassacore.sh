@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -ev
 
 # Fetch CoreCLR
 # tests => tests_coreclr
@@ -8,6 +8,12 @@ set -e
 
 TMP_DIR="/tmp/coreclr_$(date '+%h_%d_%H:%M:%S')"
 CORECLR_SOURCE=dotnet_ci
+PACKAGE_SOURCE=nuget
+
+error () {
+    echo "Error at line $1, sorry!"
+    exit 1
+}
 
 if [ "z$HOSTTYPE" != zx86_64 ]; then
    echo 64 bit only, sorry!
@@ -26,13 +32,24 @@ esac
 
 while [[ $# > 1 ]]; do
     case "$1" in
+	-l|--latest)
+	    
 	-a|--archive)
 	    CORECLR_SOURCE=archive
 	    CORECLR_ARCHIVE="$PWD/$2"
+	    
 	    shift 2
 	    ;;
+	-p|--packages)
+	    PACKAGE_SOURCE=local
+	    PACKAGE_DIR="$PWD/$2"
+	    shift 2
+	    ;;
+	-k|--keep-dir)
+	    set KEEP_DIR
 	*)
 	    echo "Unknown option, sorry!"
+	    exit 2
 	    ;;
     esac
 done
@@ -51,9 +68,7 @@ case "$CORECLR_SOURCE" in
     archive)
 	;;
     *)
-	echo ...sorry.
-	exit 1
-	;;
+	error $LINENO
 esac
 
 unzip "$CORECLR_ARCHIVE"
@@ -83,10 +98,22 @@ universal_script () {
 
 mkdir packages
 pushd packages
-(echo '<?xml version="1.0" encoding="utf-8"?>
+
+case "$PACKAGE_SOURCE" in
+    local)
+	cp -r "$PACKAGE_DIR"/* .
+	;;
+    nuget)
+	(echo '<?xml version="1.0" encoding="utf-8"?>
 <packages>' &&
-	universal_script nuget list -Source https://www.myget.org/F/dotnet-core -Prerelease &&
-	echo '</packages>') >> packages.config
+		universal_script nuget list -Source https://www.myget.org/F/dotnet-core -Prerelease | tr -d '\r' | awk '/System/{print "<package id=\"" $1 "\" version=\"" $2 "\" />"}' &&
+		echo '</packages>') >> packages.config
+	mono ~/Downloads/nuget.exe restore -Source https://www.myget.org/F/dotnet-core -PackagesDirectory .
+	;;
+    *)
+	error $LINENO
+esac
+    
 popd
 	
 
@@ -103,6 +130,7 @@ popd
 if [ "${TMP_DIR:0:4}" != "/tmp" ]; then
     echo Something horrible has just almost happened. Probably.
 else
+    true
     #rm -rf "$TMP_DIR"
 fi
 
